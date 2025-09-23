@@ -1357,72 +1357,156 @@ const minorPentacles = [
       health: "ทำเพื่อภาพมากกว่าคุณภาพ" }
   }
 ];
-        
-// ตัวอย่างการผนวกเข้ากับกองไพ่หลัก:
-tarotData.cards.push(...minorCups);
-tarotData.cards.push(...minorWands);
-tarotData.cards.push(...minorSwords);
-tarotData.cards.push(...minorPentacles);
-        
-        // --- APPLICATION LOGIC ---
-        
-        // *** แก้ไขตรงนี้ ***
-        // เปลี่ยน 'https://...' เป็นที่อยู่โฟลเดอร์รูปภาพของคุณ
-        // เช่น ถ้าเก็บรูปในโฟลเดอร์ชื่อ 'tarot-images' ที่เดียวกับไฟล์ html นี้ ให้เปลี่ยนเป็น 'tarot-images/'
-        const imageBaseUrl = "image/";
 
-        const topicKeyMap = {
-            'ดวงวันนี้': 'general',
-            'ความรัก': 'love',
-            'การงาน': 'work',
-            'การเงิน': 'finance',
-            'สุขภาพ': 'health'
+/* ---------- รวมกองไพ่ (อย่าดันซ้ำ) ---------- */
+tarotData.cards.push(...minorCups, ...minorWands, ...minorSwords, ...minorPentacles);
+
+/* ---------- CONFIG ---------- */
+const imageBaseUrl = "image/"; // โฟลเดอร์รูป
+
+const topicKeyMap = {
+  'ดวงวันนี้': 'general',
+  'ความรัก': 'love',
+  'การงาน': 'work',
+  'การเงิน': 'finance',
+  'สุขภาพ': 'health'
+};
+
+/* ---------- HELPERS ---------- */
+function titleFor(topic, isReversed) {
+  const base = isReversed ? 'คำเตือน/ไพ่กลับหัว' : 'คำทำนาย';
+  const t = {
+    'ดวงวันนี้': `${base} ประจำวัน`,
+    'ความรัก': `${base} เรื่องความรัก`,
+    'การงาน': `${base} เรื่องการงาน`,
+    'การเงิน': `${base} เรื่องการเงิน`,
+    'สุขภาพ': `${base} เรื่องสุขภาพ`
+  };
+  return t[topic] || base;
+}
+
+function textFor(card, topicKey, isReversed) {
+  const side = isReversed ? card.reversed : card.upright;
+  // กันเคสการ์ดที่ไม่มีคำแปลครบทุกหมวด
+  return (side && side[topicKey]) ? side[topicKey] : (side?.general || '—');
+}
+
+/* ---------- CORE DRAW ---------- */
+function drawCard(topic) {
+  const deck = tarotData.cards;
+  if (!Array.isArray(deck) || deck.length === 0) return;
+
+  const idx = Math.floor(Math.random() * deck.length);
+  const card = deck[idx];
+
+  const isReversed = Math.random() < 0.4; // 40%
+
+  // DOM
+      // DOM
+    const resultEl = document.getElementById('result-container');
+    const topicTitleEl = document.getElementById('topic-title');
+    const cardImgEl = document.getElementById('card-image');
+    const cardNameEl = document.getElementById('card-name');
+    const cardOrientationEl = document.getElementById('card-orientation');
+    const predictionTitleEl = document.getElementById('prediction-title');
+    const predictionTextEl = document.getElementById('prediction-text');
+
+    function renderCard(topic, card, isReversed) {
+      // ชื่อเรื่อง & หัวข้อ
+      topicTitleEl.textContent = topic;
+
+      // ชื่อไพ่
+      cardNameEl.textContent = `${card.name_th} (${card.name_en})`;
+
+      // สถานะไพ่
+      cardOrientationEl.textContent = isReversed
+        ? 'ไพ่กลับหัว (Reversed)'
+        : 'ไพ่ปกติ (Upright)';
+
+      // ชื่อหัวข้อคำทำนาย
+      predictionTitleEl.textContent = titleFor(topic, isReversed);
+
+      // เนื้อหาคำทำนาย
+      const key = topicKeyMap[topic] || 'general';
+      predictionTextEl.textContent = textFor(card, key, isReversed);
+
+      // ภาพไพ่ + แอนิเมชันหมุนเมื่อกลับหัว
+      const url = imageBaseUrl + card.image;
+      cardImgEl.style.transform = 'rotate(0deg) scale(0.98)';
+      cardImgEl.style.opacity = '0.001';
+
+      // โหลดภาพอย่างนุ่มนวล
+      const img = new Image();
+      img.onload = () => {
+        cardImgEl.src = url;
+        cardImgEl.alt = `${card.name_th} (${card.name_en})`;
+        // แอนิเมชันเฟดอิน
+        requestAnimationFrame(() => {
+          cardImgEl.style.transition = 'transform 500ms ease, opacity 500ms ease';
+          cardImgEl.style.opacity = '1';
+          cardImgEl.style.transform = isReversed ? 'rotate(180deg)' : 'rotate(0deg)';
+        });
+      };
+      img.onerror = () => {
+        // ถ้าหาภาพไม่เจอ ให้แสดงกรอบเปล่าแทน (ยังคงคำทำนายได้อยู่)
+        cardImgEl.removeAttribute('src');
+        cardImgEl.alt = 'ไม่พบรูปไพ่';
+        cardImgEl.style.opacity = '1';
+        cardImgEl.style.transform = isReversed ? 'rotate(180deg)' : 'rotate(0deg)';
+      };
+      img.src = url;
+
+      // แสดงผลลัพธ์
+      resultEl.style.display = 'block';
+      // รีสตาร์ทแอนิเมชัน fadeIn ของกล่องผลลัพธ์
+      resultEl.style.animation = 'none';
+      // force reflow
+      // eslint-disable-next-line no-unused-expressions
+      resultEl.offsetHeight;
+      resultEl.style.animation = '';
+    }
+
+    function drawCard(topic) {
+      const deck = tarotData.cards;
+      if (!Array.isArray(deck) || deck.length === 0) return;
+
+      const idx = Math.floor(Math.random() * deck.length);
+      const card = deck[idx];
+      const isReversed = Math.random() < 0.4; // 40% โอกาสไพ่กลับหัว
+
+      renderCard(topic, card, isReversed);
+
+      // (ไม่บังคับ) บันทึกประวัติไว้ 10 รายการล่าสุด
+      try {
+        const histKey = 'tarot_history_v1';
+        const entry = {
+          t: Date.now(),
+          topic,
+          card_en: card.name_en,
+          card_th: card.name_th,
+          reversed: isReversed
         };
+        const prev = JSON.parse(localStorage.getItem(histKey) || '[]');
+        prev.unshift(entry);
+        localStorage.setItem(histKey, JSON.stringify(prev.slice(0, 10)));
+      } catch (e) { /* เงียบไว้พอ */ }
+    }
 
-        function drawCard(topic) {
-            // 1. Get random card
-            const deck = tarotData.cards;
-            const randomIndex = Math.floor(Math.random() * deck.length);
-            const selectedCard = deck[randomIndex];
-
-            // 2. Decide orientation (upright/reversed)
-            const isReversed = Math.random() < 0.4; // 40% chance to be reversed
-
-            // 3. Get UI elements
-            const resultContainer = document.getElementById('result-container');
-            const topicTitle = document.getElementById('topic-title');
-            const cardImage = document.getElementById('card-image');
-            const cardName = document.getElementById('card-name');
-            const cardOrientation = document.getElementById('card-orientation');
-            const predictionTitle = document.getElementById('prediction-title');
-            const predictionText = document.getElementById('prediction-text');
-            
-            // 4. Get prediction data
-            const orientationKey = isReversed ? 'reversed' : 'upright';
-            const topicKey = topicKeyMap[topic];
-            const prediction = selectedCard[orientationKey][topicKey] || "ไม่มีคำทำนายเฉพาะสำหรับหัวข้อนี้";
-
-            // 5. Update UI
-            topicTitle.textContent = `ผลคำทำนายด้าน: ${topic}`;
-            cardImage.src = imageBaseUrl + selectedCard.image;
-            cardImage.alt = selectedCard.name_th;
-            cardName.textContent = selectedCard.name_th;
-            
-            if (isReversed) {
-                cardOrientation.textContent = "(ไพ่กลับหัว)";
-                cardImage.style.transform = 'rotate(180deg)';
-            } else {
-                cardOrientation.textContent = "(ไพ่ตั้งตรง)";
-                cardImage.style.transform = 'rotate(0deg)';
-            }
-
-            predictionTitle.textContent = `คำทำนายสำหรับคุณ`;
-            predictionText.textContent = prediction;
-
-            // 6. Show result and scroll
-            resultContainer.style.display = 'block';
-            resultContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // ทำให้ปุ่มเข้าถึงได้ด้วยคีย์บอร์ด (Enter/Space)
+    document.querySelectorAll('.control-btn').forEach(btn => {
+      btn.setAttribute('tabindex', '0');
+      btn.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          btn.click();
         }
-    </script>
+      });
+    });
+
+    // ตัวอย่าง: เปิดด้วย "ดวงวันนี้" อัตโนมัติครั้งแรก (คอมเมนต์ออกได้ถ้าไม่ต้องการ)
+    // drawCard('ดวงวันนี้');
+/* ---------- ทำให้ drawCard ใช้ได้กับปุ่มใน HTML ---------- */
+window.drawCard = drawCard;
+</script>
 </body>
 </html>
