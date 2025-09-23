@@ -1356,11 +1356,15 @@ const minorPentacles = [
       finance: "โลภ ทุ่มผิดจังหวะ",
       health: "ทำเพื่อภาพมากกว่าคุณภาพ" }
   }
+}
 ];
         
 // ตัวอย่างการผนวกเข้ากับกองไพ่หลัก:
 tarotData.cards.push(...minorCups, ...minorWands, ...minorSwords, ...minorPentacles);
-
+tarotData.cards.push(...minorWands);
+tarotData.cards.push(...minorSwords);
+tarotData.cards.push(...minorPentacles);
+        
         // --- APPLICATION LOGIC ---
         
         // *** แก้ไขตรงนี้ ***
